@@ -19,7 +19,7 @@ namespace LeaveTheMap
 		public bool AllowLeaveAtIncident_Always = false;
 		public bool AllowLeaveAtIncident_AtWon = true;
 		public bool AllowLeaveAtIncident_AtTimePassed = true;
-		public int AllowLeaveAtIncident_After = 180;		//seconds
+		public int AllowLeaveAtIncident_After = 180;        //seconds
 
 		public override void ExposeData()
 		{
@@ -31,6 +31,17 @@ namespace LeaveTheMap
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtWon, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtTimePassed, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_After, "AllowLeaveAtIncident_After", 180);
+		}
+
+		public void ResetToDefaults()
+		{
+			AllowLeaveAtHome = true;
+			AllowLeaveAtCamp = true;
+			AllowLeaveAtSites = true;
+			AllowLeaveAtIncident_Always = false;
+			AllowLeaveAtIncident_AtWon = true;
+			AllowLeaveAtIncident_AtTimePassed = true;
+			AllowLeaveAtIncident_After = 180;
 		}
 	}
 
@@ -68,9 +79,9 @@ namespace LeaveTheMap
 				incidentSecondsInputBuffer ??= settings.AllowLeaveAtIncident_After.ToString();
 				// First row: label + text field (side by side)
 				Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
-				// Split space: label (left), text field (right)
-				float labelWidth = row.width * 0.6f;
-				float fieldWidth = row.width * 0.4f;
+																	 // Split space: label (left), text field (right)
+				float labelWidth = row.width * 0.4f;
+				float fieldWidth = row.width * 0.2f;
 				// Label
 				Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Seconds should pass (180 recommended):");
 				// Text field
@@ -81,8 +92,22 @@ namespace LeaveTheMap
 				if (int.TryParse(incidentSecondsInputBuffer, out int parsed))
 					settings.AllowLeaveAtIncident_After = Mathf.Clamp(parsed, 0, 1000);
 				settings.AllowLeaveAtIncident_After = (int)listingStandard.Slider(settings.AllowLeaveAtIncident_After, 0, 1000);
+				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
 			}
 			GUI.enabled = true;
+
+			// Add a small gap first
+			listingStandard.GapLine();
+			// Get a button-sized rect
+			Rect buttonRect = listingStandard.GetRect(30f);
+			// Draw the button
+			if (Widgets.ButtonText(buttonRect, "Restore Defaults"))
+			{
+				settings.ResetToDefaults();
+				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
+				LoadedModManager.GetMod<LeaveTheMapMod>().WriteSettings();
+			}
+
 			listingStandard.End();
 		}
 
@@ -90,8 +115,5 @@ namespace LeaveTheMap
 		{
 			return "Just Leave Already!";
 		}
-
 	}
-
-
 }

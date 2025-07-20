@@ -11,9 +11,9 @@ using Verse.Noise;
 namespace LeaveTheMap
 {
 	[StaticConstructorOnStartup]
-	public static class Class1
+	public static class LeaveTheMap
 	{
-		static Class1()
+		static LeaveTheMap()
 		{
 			new Harmony("LeaveTheMap.Mod").PatchAll();
 		}
@@ -25,20 +25,31 @@ namespace LeaveTheMap
 		public static void Postfix(Map ___map, ref bool __result)
 		{
 			//Player home
-			if (___map.IsPlayerHome)
+			if (LeaveTheMapMod.settings?.AllowLeaveAtHome == true && ___map.IsPlayerHome)
 				__result = true;
 
 			//Caravan camp
-			if (___map.IsCaravanCamp())
+			if (LeaveTheMapMod.settings?.AllowLeaveAtCamp == true && ___map.IsCaravanCamp())
 				__result = true;
 
 			//Sites: quests, ancient complexes
-			if (___map.IsSite())
+			if (LeaveTheMapMod.settings?.AllowLeaveAtSites == true && ___map.IsSite())
 				__result = true;
 
-			//Caravan incidents - only if won or if survived long enough (3 real minutes)
-			if (___map.IsCaravanIncident() && (___map.IsBattleWon() || ___map.TimePassedSeconds() > 180))
-				__result = true;
+			//Caravan incidents
+			if (___map.IsCaravanIncident())
+			{
+				if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_Always == true)
+					__result = true;
+				else
+				{
+					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtWon == true && ___map.IsBattleWon())
+						__result = true;
+					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true && 
+						___map.TimePassedSeconds() > LeaveTheMapMod.settings?.AllowLeaveAtIncident_After == true)
+						__result = true;
+				}
+			}
 		}
 	}
 
