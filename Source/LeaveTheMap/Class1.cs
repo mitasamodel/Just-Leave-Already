@@ -36,8 +36,8 @@ namespace LeaveTheMap
 			if (___map.IsSite())
 				__result = true;
 
-			//Caravan incidents - only if won or if survived long enough (5 real minutes)
-			if (___map.IsCaravanIncident() && (___map.IsBattleWon() || ___map.TimePassedSeconds() > 300))
+			//Caravan incidents - only if won or if survived long enough (3 real minutes)
+			if (___map.IsCaravanIncident() && (___map.IsBattleWon() || ___map.TimePassedSeconds() > 180))
 				__result = true;
 		}
 	}
