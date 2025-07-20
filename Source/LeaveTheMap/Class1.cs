@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,9 +36,9 @@ namespace LeaveTheMap
 			if (___map.IsSite())
 				__result = true;
 
-			//Caravan incidents - only for test
-			//if (___map.IsCaravanIncident())
-			//	__result = true;
+			//Caravan incidents - only if won
+			if (___map.IsCaravanIncident() && ___map.IsBattleWon())
+				__result = true;
 		}
 	}
 
@@ -72,6 +73,16 @@ namespace LeaveTheMap
 		{
 			return map?.Parent?.GetType().Name == "Site";
 		}
+
+		/// <summary>
+		/// Check if the Battle for the caravan has been won
+		/// </summary>
+		/// <param name="map"></param>
+		/// <returns></returns>
+		public static bool IsBattleWon(this Map map)
+		{
+			return (map.Parent as CaravansBattlefield)?.WonBattle ?? false;
+		}
 	}
 
 #if DEBUG
@@ -98,7 +109,11 @@ namespace LeaveTheMap
 			//	Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}");
 			//}
 			Map map = Find.CurrentMap;
-			Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}");
+			Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}");
+
+			var battlefield = map.Parent as RimWorld.Planet.CaravansBattlefield;
+
+
 		}
 	}
 #endif
