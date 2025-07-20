@@ -46,7 +46,7 @@ namespace LeaveTheMap
 					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtWon == true && ___map.IsBattleWon())
 						__result = true;
 					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true && 
-						___map.TimePassedSeconds() > LeaveTheMapMod.settings?.AllowLeaveAtIncident_After == true)
+						___map.TimePassedSeconds() > LeaveTheMapMod.settings.AllowLeaveAtIncident_After)
 						__result = true;
 				}
 			}
