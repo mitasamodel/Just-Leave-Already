@@ -65,14 +65,15 @@ namespace LeaveTheMap
 
 			listingStandard.Label("Allow to leave the map...");
 			//Checkboxes
-			listingStandard.CheckboxLabeled("...on home map", ref settings.AllowLeaveAtHome, "Recommended: enabled.");
-			listingStandard.CheckboxLabeled("...on caravan camping map", ref settings.AllowLeaveAtCamp, "Recommended: enabled.");
-			listingStandard.CheckboxLabeled("...on quests (sites) map", ref settings.AllowLeaveAtSites, "Recommended: enabled.");
-			listingStandard.CheckboxLabeled("...always on caravan incident map", ref settings.AllowLeaveAtIncident_Always, "Recommended: disabled.");
+			listingStandard.CheckboxLabeled("...on home map", ref settings.AllowLeaveAtHome, "Recommended: enabled");
+			listingStandard.CheckboxLabeled("...on caravan camping map", ref settings.AllowLeaveAtCamp, "Recommended: enabled");
+			listingStandard.CheckboxLabeled("...on quests (sites) map", ref settings.AllowLeaveAtSites, 
+				"Recommended: enabled\n\nNote: this setting doesn't disable the exit grid if it exists on original quest's map");
+			listingStandard.CheckboxLabeled("...always on caravan incident map", ref settings.AllowLeaveAtIncident_Always, "Recommended: disabled");
 			//Ignore if always enabled
 			GUI.enabled = !settings.AllowLeaveAtIncident_Always;
-			listingStandard.CheckboxLabeled("...on caravan incident map when won the battle", ref settings.AllowLeaveAtIncident_AtWon, "Recommended: enabled.");
-			listingStandard.CheckboxLabeled("...on caravan incident map after time passed", ref settings.AllowLeaveAtIncident_AtTimePassed, "Recommended: enabled, 180 seconds.");
+			listingStandard.CheckboxLabeled("...on caravan incident map when won the battle", ref settings.AllowLeaveAtIncident_AtWon, "Recommended: enabled");
+			listingStandard.CheckboxLabeled("...on caravan incident map after time passed", ref settings.AllowLeaveAtIncident_AtTimePassed, "Recommended: enabled, 180 seconds");
 			if (settings.AllowLeaveAtIncident_AtTimePassed)
 			{
 				// Buffer to hold manual input text
