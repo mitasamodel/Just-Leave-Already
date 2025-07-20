@@ -51,7 +51,7 @@ namespace LeaveTheMap
 		/// <returns></returns>
 		public static bool IsCaravanCamp(this Map map)
 		{
-			return map?.Parent?.GetType().Name == "Camp";
+			return map?.Parent is RimWorld.Planet.Camp;
 		}
 
 		/// <summary>
@@ -61,7 +61,7 @@ namespace LeaveTheMap
 		/// <returns></returns>
 		public static bool IsCaravanIncident(this Map map)
 		{
-			return map?.Parent?.GetType().Name == "CaravansBattlefield";
+			return map?.Parent is RimWorld.Planet.CaravansBattlefield;
 		}
 
 		/// <summary>
@@ -71,7 +71,7 @@ namespace LeaveTheMap
 		/// <returns></returns>
 		public static bool IsSite(this Map map)
 		{
-			return map?.Parent?.GetType().Name == "Site";
+			return map?.Parent is RimWorld.Planet.Site;
 		}
 
 		/// <summary>
