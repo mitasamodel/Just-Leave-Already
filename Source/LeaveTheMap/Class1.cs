@@ -36,8 +36,8 @@ namespace LeaveTheMap
 			if (___map.IsSite())
 				__result = true;
 
-			//Caravan incidents - only if won
-			if (___map.IsCaravanIncident() && ___map.IsBattleWon())
+			//Caravan incidents - only if won or if survived long enough (5 real minutes)
+			if (___map.IsCaravanIncident() && (___map.IsBattleWon() || ___map.TimePassedSeconds() > 300))
 				__result = true;
 		}
 	}
@@ -83,6 +83,16 @@ namespace LeaveTheMap
 		{
 			return (map.Parent as CaravansBattlefield)?.WonBattle ?? false;
 		}
+
+		/// <summary>
+		/// How many seconds passed from the creation of the map
+		/// </summary>
+		/// <param name="map"></param>
+		/// <returns></returns>
+		public static float TimePassedSeconds(this Map map)
+		{
+			return GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick);
+		}
 	}
 
 #if DEBUG
@@ -109,11 +119,8 @@ namespace LeaveTheMap
 			//	Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}");
 			//}
 			Map map = Find.CurrentMap;
-			Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}");
-
-			var battlefield = map.Parent as RimWorld.Planet.CaravansBattlefield;
-
-
+			Log.Message($"[MAP] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}, " +
+				$"Time: {GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick)}");
 		}
 	}
 #endif
