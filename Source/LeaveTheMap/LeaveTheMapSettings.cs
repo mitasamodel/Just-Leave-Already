@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
-using Verse;
 using UnityEngine;
+using Verse;
 
 namespace LeaveTheMap
 {
@@ -72,22 +73,24 @@ namespace LeaveTheMap
 			//Checkboxes
 			listingStandard.CheckboxLabeled("...on home map", ref settings.AllowLeaveAtHome, "Recommended: enabled");
 			listingStandard.CheckboxLabeled("...on caravan camping map", ref settings.AllowLeaveAtCamp, "Recommended: enabled");
-			listingStandard.CheckboxLabeled("...on quests (sites) map", ref settings.AllowLeaveAtSites, 
+			listingStandard.CheckboxLabeled("...on quests (sites) map", ref settings.AllowLeaveAtSites,
 				"Recommended: enabled\n\nNote: this setting doesn't disable the exit grid if it exists on original quest's map");
 			listingStandard.CheckboxLabeled("...always on caravan incident map", ref settings.AllowLeaveAtIncident_Always, "Recommended: disabled");
 			//Ignore if always enabled
 			GUI.enabled = !settings.AllowLeaveAtIncident_Always;
 			listingStandard.CheckboxLabeled("...on caravan incident map when won the battle", ref settings.AllowLeaveAtIncident_AtWon, "Recommended: enabled");
 			listingStandard.CheckboxLabeled("...on caravan incident map after time passed", ref settings.AllowLeaveAtIncident_AtTimePassed, "Recommended: enabled, 180 seconds");
+
 			if (settings.AllowLeaveAtIncident_AtTimePassed)
 			{
-				// Buffer to hold manual input text
-				incidentSecondsInputBuffer ??= settings.AllowLeaveAtIncident_After.ToString();
 				// First row: label + text field (side by side)
 				Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
 																	 // Split space: label (left), text field (right)
 				float labelWidth = row.width * 0.4f;
 				float fieldWidth = row.width * 0.2f;
+				// Buffer to hold manual input text
+				incidentSecondsInputBuffer ??= settings.AllowLeaveAtIncident_After.ToString();
+
 				// Label
 				Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Seconds should pass (180 recommended):");
 				// Text field
@@ -101,7 +104,15 @@ namespace LeaveTheMap
 				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
 			}
 			GUI.enabled = true;
-
+			{
+				Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
+																	 // Split space: label (left), text field (right)
+				float labelWidth = row.width * 0.4f;
+				float fieldWidth = row.width * 0.2f;
+				// Label
+				Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Grid size: " + settings.ExitGridSize);
+				settings.ExitGridSize = (int)listingStandard.Slider(settings.ExitGridSize, 0, 10);
+			}
 			// Add a small gap first
 			listingStandard.GapLine();
 			// Get a button-sized rect

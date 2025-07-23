@@ -88,28 +88,62 @@ namespace LeaveTheMap
 	{
 		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 		{
+			int totalConstants = 0;
+			int replacedConstants = 0;
+
 			foreach (var code in instructions)
 			{
-				// Replace hardcoded constant 2 (MaxDistToEdge) with mod setting
+				object val = null;
+
+				// Decode and log all constants
+				if (code.opcode == OpCodes.Ldc_I4_0) val = 0;
+				else if (code.opcode == OpCodes.Ldc_I4_1) val = 1;
+				else if (code.opcode == OpCodes.Ldc_I4_2) val = 2;
+				else if (code.opcode == OpCodes.Ldc_I4_3) val = 3;
+				else if (code.opcode == OpCodes.Ldc_I4_4) val = 4;
+				else if (code.opcode == OpCodes.Ldc_I4_5) val = 5;
+				else if (code.opcode == OpCodes.Ldc_I4_6) val = 6;
+				else if (code.opcode == OpCodes.Ldc_I4_7) val = 7;
+				else if (code.opcode == OpCodes.Ldc_I4_8) val = 8;
+				else if (code.opcode == OpCodes.Ldc_I4_M1) val = -1;
+				else if (code.opcode == OpCodes.Ldc_I4 || code.opcode == OpCodes.Ldc_I4_S)
+					val = code.operand;
+
+				if (val != null)
+				{
+					Log.Message($"[JLA] Found constant int: {val}");
+					totalConstants++;
+				}
+
+				// Replace only literal 2s
 				if ((code.opcode == OpCodes.Ldc_I4_2) ||
 					(code.opcode == OpCodes.Ldc_I4_S && (sbyte)code.operand == 2))
 				{
-					// Load static field: LeaveTheMapMod.settings
+					Log.Message("[JLA] Replacing hardcoded 2 with ExitGridSize");
+
+					var labels = code.labels;
+
 					yield return new CodeInstruction(OpCodes.Ldsfld,
 						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
-						.WithLabels(code.labels);
+						.WithLabels(labels);
 
-					// Load instance field: ExitGridSize
 					yield return new CodeInstruction(OpCodes.Ldfld,
 						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
+
+					replacedConstants++;
 				}
 				else
 				{
 					yield return code;
 				}
 			}
+
+			Log.Message($"[JLA] Rebuild constant scan complete. Total: {totalConstants}, Replaced: {replacedConstants}");
 		}
 	}
+
+
+
 
 	public static class CurrentMapInfo
 	{
