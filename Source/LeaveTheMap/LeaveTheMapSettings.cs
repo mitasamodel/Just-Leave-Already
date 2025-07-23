@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime;
@@ -14,7 +15,9 @@ namespace LeaveTheMap
 	/// </summary>
 	public class LeaveTheMapSettings : ModSettings
 	{
-		const int ExitGridSizeDefault = 10;
+		const bool ExitGridSizeEnabledDefault = true;
+		const int ExitGridSizeDefault = 4;
+		public const int ExitGridSizeGameDefault = 2;
 
 		public bool AllowLeaveAtHome = true;
 		public bool AllowLeaveAtCamp = true;
@@ -23,6 +26,7 @@ namespace LeaveTheMap
 		public bool AllowLeaveAtIncident_AtWon = true;
 		public bool AllowLeaveAtIncident_AtTimePassed = true;
 		public int AllowLeaveAtIncident_After = 180;        //seconds
+		public bool ExitGridSizeEnabled = ExitGridSizeEnabledDefault;
 		public int ExitGridSize = ExitGridSizeDefault;
 
 		public override void ExposeData()
@@ -35,6 +39,7 @@ namespace LeaveTheMap
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtWon, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtTimePassed, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_After, "AllowLeaveAtIncident_After", 180);
+			Scribe_Values.Look(ref ExitGridSizeEnabled, "ExitGridSizeEnabled", ExitGridSizeEnabledDefault);
 			Scribe_Values.Look(ref ExitGridSize, "ExitGridSize", ExitGridSizeDefault);
 		}
 
@@ -47,6 +52,7 @@ namespace LeaveTheMap
 			AllowLeaveAtIncident_AtWon = true;
 			AllowLeaveAtIncident_AtTimePassed = true;
 			AllowLeaveAtIncident_After = 180;
+			ExitGridSizeEnabled = ExitGridSizeEnabledDefault;
 			ExitGridSize = ExitGridSizeDefault;
 		}
 	}
@@ -58,6 +64,7 @@ namespace LeaveTheMap
 	{
 		public static LeaveTheMapSettings settings;
 		private string incidentSecondsInputBuffer;
+		private string exitGridInputBuffer;
 
 		public LeaveTheMapMod(ModContentPack content) : base(content)
 		{
@@ -66,6 +73,8 @@ namespace LeaveTheMap
 
 		public override void DoSettingsWindowContents(Rect inRect)
 		{
+			int originalGridSize = settings.ExitGridSize;
+
 			Listing_Standard listingStandard = new Listing_Standard();
 			listingStandard.Begin(inRect);
 
@@ -104,15 +113,40 @@ namespace LeaveTheMap
 				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
 			}
 			GUI.enabled = true;
+
+			if (ModsConfig.IsActive("SmashPhil.VehicleFramework"))
 			{
-				Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
-																	 // Split space: label (left), text field (right)
-				float labelWidth = row.width * 0.4f;
-				float fieldWidth = row.width * 0.2f;
-				// Label
-				Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Grid size: " + settings.ExitGridSize);
-				settings.ExitGridSize = (int)listingStandard.Slider(settings.ExitGridSize, 0, 10);
+				listingStandard.GapLine();
+				listingStandard.Label("Vehicle Framework compatability");
+				listingStandard.CheckboxLabeled("Modify exit grid size", ref settings.ExitGridSizeEnabled, 
+					"Recommended: enabled, 4\n\n" +
+					"Reason: some vehicles are too big and cannot drive close enough to the edge of the map");
+				if (settings.ExitGridSizeEnabled)
+				{
+					Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
+					float labelWidth = row.width * 0.4f;
+					float fieldWidth = row.width * 0.2f;
+					Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Grid size:");
+					exitGridInputBuffer = Widgets.TextField(
+						new Rect(row.x + labelWidth, row.y, fieldWidth, row.height),
+						exitGridInputBuffer
+						);
+					if (int.TryParse(exitGridInputBuffer, out int parsed))
+						settings.ExitGridSize = Mathf.Clamp(parsed, 2, 10);
+					settings.ExitGridSize = (int)listingStandard.Slider(settings.ExitGridSize, 2, 10);
+					exitGridInputBuffer = settings.ExitGridSize.ToString();
+				}
+				else
+					settings.ExitGridSize = LeaveTheMapSettings.ExitGridSizeGameDefault;  //game's default
 			}
+			else
+				settings.ExitGridSize = LeaveTheMapSettings.ExitGridSizeGameDefault;  //game's default
+
+			if (originalGridSize != settings.ExitGridSize)
+			{
+				ExitGridUpdateManager.RequestRebuildDelayed(delaySeconds: 1);	//delayed update
+			}
+
 			// Add a small gap first
 			listingStandard.GapLine();
 			// Get a button-sized rect
@@ -122,6 +156,7 @@ namespace LeaveTheMap
 			{
 				settings.ResetToDefaults();
 				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
+				exitGridInputBuffer = settings.ExitGridSize.ToString();
 				LoadedModManager.GetMod<LeaveTheMapMod>().WriteSettings();
 			}
 

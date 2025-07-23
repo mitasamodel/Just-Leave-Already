@@ -21,6 +21,9 @@ namespace LeaveTheMap
 		}
 	}
 
+	/// <summary>
+	/// Change the maps on which ExitGrid is available
+	/// </summary>
 	[HarmonyPatch(typeof(ExitMapGrid), "get_MapUsesExitGrid")]
 	public static class ExitMapGrid_MapUsesExitGrid_Patch
 	{
@@ -55,6 +58,9 @@ namespace LeaveTheMap
 		}
 	}
 
+	/// <summary>
+	/// Grid size: use setting instead of hardcorded "2"
+	/// </summary>
 	[HarmonyPatch(typeof(ExitMapGrid), "IsGoodExitCell")]
 	public static class ExitMapGrid_IsGoodExitCell_Patch
 	{
@@ -83,6 +89,9 @@ namespace LeaveTheMap
 		}
 	}
 
+	/// <summary>
+	/// Grid size: replace hardocred values by setting
+	/// </summary>
 	[HarmonyPatch(typeof(ExitMapGrid), "Rebuild")]
 	public static class ExitMapGrid_Rebuild_Patch
 	{
@@ -96,11 +105,13 @@ namespace LeaveTheMap
 			{
 				var code = codes[i];
 
-				// 🔁 Replace '2' (unconditionally)
+				// Replace '2' (unconditionally)
 				if (code.opcode == OpCodes.Ldc_I4_2 ||
 					(code.opcode == OpCodes.Ldc_I4_S && (sbyte)code.operand == 2))
 				{
+#if DEBUG
 					Log.Message("[JLA] Replacing hardcoded 2 with ExitGridSize");
+#endif
 
 					var labels = code.labels;
 
@@ -115,21 +126,15 @@ namespace LeaveTheMap
 					continue;
 				}
 
-				//if (code.opcode == OpCodes.Ldc_I4_1)
-				//{
-				//	var prev = i > 0 ? codes[i - 1] : null;
-				//	var next = i < codes.Count - 1 ? codes[i + 1] : null;
-
-				//	Log.Message($"[JLA] Found ldc.i4.1 at index {i} — Prev: {prev?.opcode}, Next: {next?.opcode}");
-				//}
-
 				// Replace '1' only when part of 'i > 1' or 'j > 1'
 				if (i >= 1 && i < codes.Count - 1 &&
 					code.opcode == OpCodes.Ldc_I4_1 &&
 					codes[i - 1].opcode.Name.StartsWith("ldloc") &&
 					codes[i + 1].opcode == OpCodes.Ble_S)
 				{
+#if DEBUG
 					Log.Message("[JLA] Replacing '1' in comparison (i > 1 / j > 1) with ExitGridSize - 1");
+#endif
 
 					var labels = code.labels;
 
@@ -150,14 +155,11 @@ namespace LeaveTheMap
 				// Default: emit unmodified
 				yield return code;
 			}
-
+#if DEBUG
 			Log.Message($"[JLA] Rebuild transpiler complete. Replaced: {replaced2Count} hardcoded 2s, {replaced1ComparisonCount} comparison 1s.");
+#endif
 		}
 	}
-
-
-
-
 
 	public static class CurrentMapInfo
 	{
@@ -219,11 +221,54 @@ namespace LeaveTheMap
 		{
 			if (map == null) return;
 
-			var method = typeof(ExitMapGrid).GetMethod("Rebuild", BindingFlags.Instance | BindingFlags.NonPublic);
-			method?.Invoke(map.exitMapGrid, null);
+			map.exitMapGrid?.Notify_LOSBlockerSpawned();
 
-			map.exitMapGrid.Drawer?.SetDirty();               // Force redraw
-			map.exitMapGrid.Drawer?.CellBoolDrawerUpdate();   // Apply redraw immediately
+			//var method = typeof(ExitMapGrid).GetMethod("Rebuild", BindingFlags.Instance | BindingFlags.NonPublic);
+			//method?.Invoke(map.exitMapGrid, null);
+
+			//map.exitMapGrid.Drawer?.SetDirty();               // Force redraw
+			//map.exitMapGrid.Drawer?.CellBoolDrawerUpdate();   // Apply redraw immediately
+		}
+	}
+
+	/// <summary>
+	/// Rebuild exit grid if required
+	/// </summary>
+	public class ExitGridUpdateManager : GameComponent
+	{
+		private static int ticksUntilRebuild = -1;
+
+		public ExitGridUpdateManager(Game game) { }
+
+		public override void GameComponentTick()
+		{
+			if (ticksUntilRebuild > 0)
+			{
+				ticksUntilRebuild--;
+			}
+			else if (ticksUntilRebuild == 0 )
+			{
+				Log.Message("[JLA] Rebuild exit grid");
+				ticksUntilRebuild = -1;
+				foreach (Map map in Find.Maps)
+				{
+					if (map == null) continue;
+
+					map.exitMapGrid?.Notify_LOSBlockerSpawned();
+					map.exitMapGrid?.Drawer?.SetDirty();
+					map.exitMapGrid?.Drawer?.CellBoolDrawerUpdate();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Request a rebuild after X seconds
+		/// </summary>
+		/// <param name="map">Target map</param>
+		/// <param name="delaySeconds">How many seconds to wait</param>
+		public static void RequestRebuildDelayed(int delaySeconds = 1)
+		{
+			ticksUntilRebuild = delaySeconds * 60; // convert seconds to ticks
 		}
 	}
 
@@ -254,8 +299,8 @@ namespace LeaveTheMap
 			//Log.Message($"[MAP] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}, " +
 			//	$"Time: {GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick)}");
 
-			Log.Message("[MAP] Try rebuild");
-			CurrentMapInfo.ForceExitGridRebuild(map);
+			//Log.Message("[MAP] Try rebuild");
+			//CurrentMapInfo.ForceExitGridRebuild(map);
 			//map?.exitMapGrid.Drawer?.CellBoolDrawerUpdate();
 		}
 	}
