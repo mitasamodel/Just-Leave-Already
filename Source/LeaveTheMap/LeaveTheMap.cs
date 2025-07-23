@@ -3,6 +3,8 @@ using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using Verse;
@@ -45,9 +47,65 @@ namespace LeaveTheMap
 				{
 					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtWon == true && ___map.IsBattleWon())
 						__result = true;
-					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true && 
+					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true &&
 						___map.TimePassedSeconds() > LeaveTheMapMod.settings.AllowLeaveAtIncident_After)
 						__result = true;
+				}
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(ExitMapGrid), "IsGoodExitCell")]
+	public static class ExitMapGrid_IsGoodExitCell_Patch
+	{
+		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			foreach (var code in instructions)
+			{
+				if (code.opcode == OpCodes.Ldc_R4 && (float)code.operand == 2f)
+				{
+					var labels = code.labels; // Preserve any attached labels
+
+					yield return new CodeInstruction(OpCodes.Ldsfld,
+						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
+						.WithLabels(labels); // Attach labels to first new instruction
+
+					yield return new CodeInstruction(OpCodes.Ldfld,
+						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
+
+					yield return new CodeInstruction(OpCodes.Conv_R4); // Convert int to float
+				}
+				else
+				{
+					yield return code;
+				}
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(ExitMapGrid), "Rebuild")]
+	public static class ExitMapGrid_Rebuild_Patch
+	{
+		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		{
+			foreach (var code in instructions)
+			{
+				// Replace hardcoded constant 2 (MaxDistToEdge) with mod setting
+				if ((code.opcode == OpCodes.Ldc_I4_2) ||
+					(code.opcode == OpCodes.Ldc_I4_S && (sbyte)code.operand == 2))
+				{
+					// Load static field: LeaveTheMapMod.settings
+					yield return new CodeInstruction(OpCodes.Ldsfld,
+						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
+						.WithLabels(code.labels);
+
+					// Load instance field: ExitGridSize
+					yield return new CodeInstruction(OpCodes.Ldfld,
+						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
+				}
+				else
+				{
+					yield return code;
 				}
 			}
 		}
@@ -104,6 +162,21 @@ namespace LeaveTheMap
 		{
 			return GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick);
 		}
+
+		/// <summary>
+		/// Force rebuild exit grid
+		/// </summary>
+		/// <param name="map"></param>
+		public static void ForceExitGridRebuild(Map map)
+		{
+			if (map == null) return;
+
+			var method = typeof(ExitMapGrid).GetMethod("Rebuild", BindingFlags.Instance | BindingFlags.NonPublic);
+			method?.Invoke(map.exitMapGrid, null);
+
+			map.exitMapGrid.Drawer?.SetDirty();               // Force redraw
+			map.exitMapGrid.Drawer?.CellBoolDrawerUpdate();   // Apply redraw immediately
+		}
 	}
 
 #if DEBUG
@@ -130,8 +203,12 @@ namespace LeaveTheMap
 			//	Log.Message($"[MY] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}");
 			//}
 			Map map = Find.CurrentMap;
-			Log.Message($"[MAP] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}, " +
-				$"Time: {GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick)}");
+			//Log.Message($"[MAP] Map: {map}, Type: {map.GetType().Name}, Parent: {map.Parent?.GetType().Name}, Fullname: {map.Parent?.GetType().FullName}, " +
+			//	$"Time: {GenTicks.TicksToSeconds(GenTicks.TicksGame - map.generationTick)}");
+
+			Log.Message("[MAP] Try rebuild");
+			CurrentMapInfo.ForceExitGridRebuild(map);
+			//map?.exitMapGrid.Drawer?.CellBoolDrawerUpdate();
 		}
 	}
 #endif

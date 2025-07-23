@@ -13,6 +13,8 @@ namespace LeaveTheMap
 	/// </summary>
 	public class LeaveTheMapSettings : ModSettings
 	{
+		const int ExitGridSizeDefault = 10;
+
 		public bool AllowLeaveAtHome = true;
 		public bool AllowLeaveAtCamp = true;
 		public bool AllowLeaveAtSites = true;
@@ -20,6 +22,7 @@ namespace LeaveTheMap
 		public bool AllowLeaveAtIncident_AtWon = true;
 		public bool AllowLeaveAtIncident_AtTimePassed = true;
 		public int AllowLeaveAtIncident_After = 180;        //seconds
+		public int ExitGridSize = ExitGridSizeDefault;
 
 		public override void ExposeData()
 		{
@@ -31,6 +34,7 @@ namespace LeaveTheMap
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtWon, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_AtTimePassed, "AllowLeaveAtIncident_AtWon", true);
 			Scribe_Values.Look(ref AllowLeaveAtIncident_After, "AllowLeaveAtIncident_After", 180);
+			Scribe_Values.Look(ref ExitGridSize, "ExitGridSize", ExitGridSizeDefault);
 		}
 
 		public void ResetToDefaults()
@@ -42,6 +46,7 @@ namespace LeaveTheMap
 			AllowLeaveAtIncident_AtWon = true;
 			AllowLeaveAtIncident_AtTimePassed = true;
 			AllowLeaveAtIncident_After = 180;
+			ExitGridSize = ExitGridSizeDefault;
 		}
 	}
 
