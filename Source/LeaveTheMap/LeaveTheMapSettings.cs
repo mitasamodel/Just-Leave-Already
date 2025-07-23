@@ -117,7 +117,7 @@ namespace LeaveTheMap
 			if (ModsConfig.IsActive("SmashPhil.VehicleFramework"))
 			{
 				listingStandard.GapLine();
-				listingStandard.Label("Vehicle Framework compatability");
+				listingStandard.Label("Vehicle Framework compatibility");
 				listingStandard.CheckboxLabeled("Modify exit grid size", ref settings.ExitGridSizeEnabled, 
 					"Recommended: enabled, 4\n\n" +
 					"Reason: some vehicles are too big and cannot drive close enough to the edge of the map");
