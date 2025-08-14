@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
 
 namespace LeaveTheMap
 {
@@ -142,6 +143,21 @@ namespace LeaveTheMap
 			else
 				settings.ExitGridSize = LeaveTheMapSettings.ExitGridSizeGameDefault;  //game's default
 
+			// Compatibility with WalkTheWorld - it clears the color and it must be forcefully updated
+			if (ModsConfig.IsActive("addvans.WalkTheWorld"))
+			{
+				Rect rect = listingStandard.GetRect(30f);
+				TooltipHandler.TipRegion(rect, "Walk The World mod changes the color of the exit grid if it is disabled on all maps.\n\n" +
+					"Click this button to re-draw the exit grids after you disabled that setting.\n\n" +
+					"Note: If grid disabled globally in Walk The World mod, then that mod (Just leave already) is basically not used.");
+				if (Widgets.ButtonText(rect, "Force update exit grid (run the game for 1 sec after click)"))
+				{
+					ExitGridUpdateManager.RequestRebuildDelayed(delaySeconds: 1);
+					SoundDefOf.Click.PlayOneShotOnCamera();
+					Messages.Message("Run the game for 1 sec.", MessageTypeDefOf.TaskCompletion, historical: false);
+				}
+			}
+
 			if (originalGridSize != settings.ExitGridSize)
 			{
 				ExitGridUpdateManager.RequestRebuildDelayed(delaySeconds: 1);	//delayed update
@@ -158,6 +174,7 @@ namespace LeaveTheMap
 				incidentSecondsInputBuffer = settings.AllowLeaveAtIncident_After.ToString();
 				exitGridInputBuffer = settings.ExitGridSize.ToString();
 				LoadedModManager.GetMod<LeaveTheMapMod>().WriteSettings();
+				ExitGridUpdateManager.RequestRebuildDelayed();
 			}
 
 			listingStandard.End();

@@ -246,7 +246,7 @@ namespace LeaveTheMap
 			{
 				ticksUntilRebuild--;
 			}
-			else if (ticksUntilRebuild == 0 )
+			else if (ticksUntilRebuild == 0)
 			{
 				Log.Message("[JLA] Rebuild exit grid");
 				ticksUntilRebuild = -1;
@@ -254,6 +254,11 @@ namespace LeaveTheMap
 				{
 					if (map == null) continue;
 
+					// Force color rebuild
+					var fld = typeof(ExitMapGrid).GetField("drawerInt",	BindingFlags.Instance | BindingFlags.NonPublic);
+					fld?.SetValue(map.exitMapGrid, null);
+
+					// Rebuild exit grid
 					map.exitMapGrid?.Notify_LOSBlockerSpawned();
 					map.exitMapGrid?.Drawer?.SetDirty();
 					map.exitMapGrid?.Drawer?.CellBoolDrawerUpdate();
