@@ -59,11 +59,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ExitGridUpdateManager.cs" />
     <Compile Include="LeaveTheMap.cs" />
+    <Compile Include="MapExtensions.cs" />
+    <Compile Include="ExitGridUpdateManager.cs" />
+    <Compile Include="Harmony_ExitMapGrid.cs" />
     <Compile Include="LeaveTheMapSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="tmp.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
