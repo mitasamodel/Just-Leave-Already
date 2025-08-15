@@ -115,6 +115,7 @@ namespace LeaveTheMap
 			}
 			GUI.enabled = true;
 
+			// Compatibility with Vehicle Framework
 			if (ModsConfig.IsActive("SmashPhil.VehicleFramework"))
 			{
 				listingStandard.GapLine();

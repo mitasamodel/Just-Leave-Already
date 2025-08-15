@@ -21,145 +21,149 @@ namespace LeaveTheMap
 		}
 	}
 
-	/// <summary>
-	/// Change the maps on which ExitGrid is available
-	/// </summary>
-	[HarmonyPatch(typeof(ExitMapGrid), "get_MapUsesExitGrid")]
-	public static class ExitMapGrid_MapUsesExitGrid_Patch
+	public static class Harmony_ExitMapGrid
 	{
-		public static void Postfix(Map ___map, ref bool __result)
+		/// <summary>
+		/// Change the maps on which ExitGrid is available
+		/// </summary>
+		[HarmonyPatch(typeof(ExitMapGrid), nameof(ExitMapGrid.MapUsesExitGrid), MethodType.Getter)]
+		public static class ExitMapGrid_MapUsesExitGrid_Patch
 		{
-			//Player home
-			if (LeaveTheMapMod.settings?.AllowLeaveAtHome == true && ___map.IsPlayerHome)
-				__result = true;
-
-			//Caravan camp
-			if (LeaveTheMapMod.settings?.AllowLeaveAtCamp == true && ___map.IsCaravanCamp())
-				__result = true;
-
-			//Sites: quests, ancient complexes
-			if (LeaveTheMapMod.settings?.AllowLeaveAtSites == true && ___map.IsSite())
-				__result = true;
-
-			//Caravan incidents
-			if (___map.IsCaravanIncident())
+			public static void Postfix(Map ___map, ref bool __result)
 			{
-				if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_Always == true)
+				//Player home
+				if (LeaveTheMapMod.settings?.AllowLeaveAtHome == true && ___map.IsPlayerHome)
 					__result = true;
-				else
+
+				//Caravan camp
+				if (LeaveTheMapMod.settings?.AllowLeaveAtCamp == true && ___map.IsCaravanCamp())
+					__result = true;
+
+				//Sites: quests, ancient complexes
+				if (LeaveTheMapMod.settings?.AllowLeaveAtSites == true && ___map.IsSite())
+					__result = true;
+
+				//Caravan incidents
+				if (___map.IsCaravanIncident())
 				{
-					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtWon == true && ___map.IsBattleWon())
+					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_Always == true)
 						__result = true;
-					if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true &&
-						___map.TimePassedSeconds() > LeaveTheMapMod.settings.AllowLeaveAtIncident_After)
-						__result = true;
+					else
+					{
+						if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtWon == true && ___map.IsBattleWon())
+							__result = true;
+						if (LeaveTheMapMod.settings?.AllowLeaveAtIncident_AtTimePassed == true &&
+							___map.TimePassedSeconds() > LeaveTheMapMod.settings.AllowLeaveAtIncident_After)
+							__result = true;
+					}
 				}
 			}
 		}
-	}
 
-	/// <summary>
-	/// Grid size: use setting instead of hardcorded "2"
-	/// </summary>
-	[HarmonyPatch(typeof(ExitMapGrid), "IsGoodExitCell")]
-	public static class ExitMapGrid_IsGoodExitCell_Patch
-	{
-		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		/// <summary>
+		/// Grid size: use setting instead of hardcorded "2"
+		/// </summary>
+		[HarmonyPatch(typeof(ExitMapGrid), "IsGoodExitCell")]
+		public static class ExitMapGrid_IsGoodExitCell_Patch
 		{
-			foreach (var code in instructions)
+			static readonly FieldInfo SettingsFI =
+				AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings));
+			static readonly FieldInfo ExitGridSizeFI =
+				AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize));
+
+			public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 			{
-				if (code.opcode == OpCodes.Ldc_R4 && (float)code.operand == 2f)
-				{
-					var labels = code.labels; // Preserve any attached labels
-
-					yield return new CodeInstruction(OpCodes.Ldsfld,
-						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
-						.WithLabels(labels); // Attach labels to first new instruction
-
-					yield return new CodeInstruction(OpCodes.Ldfld,
-						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
-
-					yield return new CodeInstruction(OpCodes.Conv_R4); // Convert int to float
-				}
-				else
-				{
-					yield return code;
-				}
+				var matcher = new CodeMatcher(instructions);
+				matcher.MatchStartForward(
+						new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.OperandIs(2f))
+					)
+					.Repeat(cm =>
+					{
+						var labels = cm.Instruction.labels; // carry over any labels targeting the old ldc.r4 2f
+						cm.RemoveInstruction()
+						  .InsertAndAdvance(
+							  new CodeInstruction(OpCodes.Ldsfld, SettingsFI).WithLabels(labels),   // Static field: LeaveTheMapMod.settings
+							  new CodeInstruction(OpCodes.Ldfld, ExitGridSizeFI),                   // Instance field: LeaveTheMapSettings.ExitGridSize
+							  new CodeInstruction(OpCodes.Conv_R4)                                  // Convert int to float
+						  );
+					});
+				return matcher.InstructionEnumeration();
 			}
 		}
-	}
 
-	/// <summary>
-	/// Grid size: replace hardocred values by setting
-	/// </summary>
-	[HarmonyPatch(typeof(ExitMapGrid), "Rebuild")]
-	public static class ExitMapGrid_Rebuild_Patch
-	{
-		public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+		/// <summary>
+		/// Grid size: replace hardocred values by setting
+		/// </summary>
+		[HarmonyPatch(typeof(ExitMapGrid), "Rebuild")]
+		public static class ExitMapGrid_Rebuild_Patch
 		{
-			var codes = instructions.ToList();
-			int replaced2Count = 0;
-			int replaced1ComparisonCount = 0;
-
-			for (int i = 0; i < codes.Count; i++)
+			public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
 			{
-				var code = codes[i];
+				var codes = instructions.ToList();
+				int replaced2Count = 0;
+				int replaced1ComparisonCount = 0;
 
-				// Replace '2' (unconditionally)
-				if (code.opcode == OpCodes.Ldc_I4_2 ||
-					(code.opcode == OpCodes.Ldc_I4_S && (sbyte)code.operand == 2))
+				for (int i = 0; i < codes.Count; i++)
 				{
+					var code = codes[i];
+
+					// Replace '2' (unconditionally)
+					if (code.opcode == OpCodes.Ldc_I4_2 ||
+						(code.opcode == OpCodes.Ldc_I4_S && (sbyte)code.operand == 2))
+					{
 #if DEBUG
 					Log.Message("[JLA] Replacing hardcoded 2 with ExitGridSize");
 #endif
 
-					var labels = code.labels;
+						var labels = code.labels;
 
-					yield return new CodeInstruction(OpCodes.Ldsfld,
-						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
-						.WithLabels(labels);
+						yield return new CodeInstruction(OpCodes.Ldsfld,
+							AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
+							.WithLabels(labels);
 
-					yield return new CodeInstruction(OpCodes.Ldfld,
-						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
+						yield return new CodeInstruction(OpCodes.Ldfld,
+							AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
 
-					replaced2Count++;
-					continue;
-				}
+						replaced2Count++;
+						continue;
+					}
 
-				// Replace '1' only when part of 'i > 1' or 'j > 1'
-				if (i >= 1 && i < codes.Count - 1 &&
-					code.opcode == OpCodes.Ldc_I4_1 &&
-					codes[i - 1].opcode.Name.StartsWith("ldloc") &&
-					codes[i + 1].opcode == OpCodes.Ble_S)
-				{
+					// Replace '1' only when part of 'i > 1' or 'j > 1'
+					if (i >= 1 && i < codes.Count - 1 &&
+						code.opcode == OpCodes.Ldc_I4_1 &&
+						codes[i - 1].opcode.Name.StartsWith("ldloc") &&
+						codes[i + 1].opcode == OpCodes.Ble_S)
+					{
 #if DEBUG
 					Log.Message("[JLA] Replacing '1' in comparison (i > 1 / j > 1) with ExitGridSize - 1");
 #endif
 
-					var labels = code.labels;
+						var labels = code.labels;
 
-					yield return new CodeInstruction(OpCodes.Ldsfld,
-						AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
-						.WithLabels(labels);
+						yield return new CodeInstruction(OpCodes.Ldsfld,
+							AccessTools.Field(typeof(LeaveTheMapMod), nameof(LeaveTheMapMod.settings)))
+							.WithLabels(labels);
 
-					yield return new CodeInstruction(OpCodes.Ldfld,
-						AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
+						yield return new CodeInstruction(OpCodes.Ldfld,
+							AccessTools.Field(typeof(LeaveTheMapSettings), nameof(LeaveTheMapSettings.ExitGridSize)));
 
-					yield return new CodeInstruction(OpCodes.Ldc_I4_1);
-					yield return new CodeInstruction(OpCodes.Sub);
+						yield return new CodeInstruction(OpCodes.Ldc_I4_1);
+						yield return new CodeInstruction(OpCodes.Sub);
 
-					replaced1ComparisonCount++;
-					continue;
+						replaced1ComparisonCount++;
+						continue;
+					}
+
+					// Default: emit unmodified
+					yield return code;
 				}
-
-				// Default: emit unmodified
-				yield return code;
-			}
 #if DEBUG
 			Log.Message($"[JLA] Rebuild transpiler complete. Replaced: {replaced2Count} hardcoded 2s, {replaced1ComparisonCount} comparison 1s.");
 #endif
+			}
 		}
 	}
+
 
 	public static class CurrentMapInfo
 	{
@@ -228,52 +232,6 @@ namespace LeaveTheMap
 
 			//map.exitMapGrid.Drawer?.SetDirty();               // Force redraw
 			//map.exitMapGrid.Drawer?.CellBoolDrawerUpdate();   // Apply redraw immediately
-		}
-	}
-
-	/// <summary>
-	/// Rebuild exit grid if required
-	/// </summary>
-	public class ExitGridUpdateManager : GameComponent
-	{
-		private static int ticksUntilRebuild = -1;
-
-		public ExitGridUpdateManager(Game game) { }
-
-		public override void GameComponentTick()
-		{
-			if (ticksUntilRebuild > 0)
-			{
-				ticksUntilRebuild--;
-			}
-			else if (ticksUntilRebuild == 0)
-			{
-				Log.Message("[JLA] Rebuild exit grid");
-				ticksUntilRebuild = -1;
-				foreach (Map map in Find.Maps)
-				{
-					if (map == null) continue;
-
-					// Force color rebuild
-					var fld = typeof(ExitMapGrid).GetField("drawerInt",	BindingFlags.Instance | BindingFlags.NonPublic);
-					fld?.SetValue(map.exitMapGrid, null);
-
-					// Rebuild exit grid
-					map.exitMapGrid?.Notify_LOSBlockerSpawned();
-					map.exitMapGrid?.Drawer?.SetDirty();
-					map.exitMapGrid?.Drawer?.CellBoolDrawerUpdate();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Request a rebuild after X seconds
-		/// </summary>
-		/// <param name="map">Target map</param>
-		/// <param name="delaySeconds">How many seconds to wait</param>
-		public static void RequestRebuildDelayed(int delaySeconds = 1)
-		{
-			ticksUntilRebuild = delaySeconds * 60; // convert seconds to ticks
 		}
 	}
 
