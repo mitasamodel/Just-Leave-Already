@@ -16,7 +16,7 @@ namespace LeaveTheMap
 	/// </summary>
 	public class LeaveTheMapSettings : ModSettings
 	{
-		const bool ExitGridSizeEnabledDefault = true;
+		const bool ExitGridSizeEnabledDefault = false;
 		const int ExitGridSizeDefault = 4;
 		public const int ExitGridSizeGameDefault = 2;
 
@@ -115,31 +115,23 @@ namespace LeaveTheMap
 			}
 			GUI.enabled = true;
 
-			// Compatibility with Vehicle Framework
-			if (ModsConfig.IsActive("SmashPhil.VehicleFramework"))
+			listingStandard.GapLine();
+			listingStandard.CheckboxLabeled("Modify exit grid size", ref settings.ExitGridSizeEnabled,
+				"Some items (e.g. vehicles from VF) can be too big and cannot achieve the edge of the map.");
+			if (settings.ExitGridSizeEnabled)
 			{
-				listingStandard.GapLine();
-				listingStandard.Label("Vehicle Framework compatibility");
-				listingStandard.CheckboxLabeled("Modify exit grid size", ref settings.ExitGridSizeEnabled, 
-					"Recommended: enabled, 4\n\n" +
-					"Reason: some vehicles are too big and cannot drive close enough to the edge of the map");
-				if (settings.ExitGridSizeEnabled)
-				{
-					Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
-					float labelWidth = row.width * 0.4f;
-					float fieldWidth = row.width * 0.2f;
-					Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Grid size:");
-					exitGridInputBuffer = Widgets.TextField(
-						new Rect(row.x + labelWidth, row.y, fieldWidth, row.height),
-						exitGridInputBuffer
-						);
-					if (int.TryParse(exitGridInputBuffer, out int parsed))
-						settings.ExitGridSize = Mathf.Clamp(parsed, 2, 10);
-					settings.ExitGridSize = (int)listingStandard.Slider(settings.ExitGridSize, 2, 10);
-					exitGridInputBuffer = settings.ExitGridSize.ToString();
-				}
-				else
-					settings.ExitGridSize = LeaveTheMapSettings.ExitGridSizeGameDefault;  //game's default
+				Rect row = listingStandard.GetRect(Text.LineHeight); // 1 line tall
+				float labelWidth = row.width * 0.4f;
+				float fieldWidth = row.width * 0.2f;
+				Widgets.Label(new Rect(row.x, row.y, labelWidth, row.height), "Grid size:");
+				exitGridInputBuffer = Widgets.TextField(
+					new Rect(row.x + labelWidth, row.y, fieldWidth, row.height),
+					exitGridInputBuffer
+					);
+				if (int.TryParse(exitGridInputBuffer, out int parsed))
+					settings.ExitGridSize = Mathf.Clamp(parsed, 2, 50);
+				settings.ExitGridSize = (int)listingStandard.Slider(settings.ExitGridSize, 2, 50);
+				exitGridInputBuffer = settings.ExitGridSize.ToString();
 			}
 			else
 				settings.ExitGridSize = LeaveTheMapSettings.ExitGridSizeGameDefault;  //game's default
@@ -161,7 +153,7 @@ namespace LeaveTheMap
 
 			if (originalGridSize != settings.ExitGridSize)
 			{
-				ExitGridUpdateManager.RequestRebuildDelayed(delaySeconds: 1);	//delayed update
+				ExitGridUpdateManager.RequestRebuildDelayed(delaySeconds: 1);   //delayed update
 			}
 
 			// Add a small gap first
